@@ -2,6 +2,10 @@ const express = require("express");
 const router = express.Router();
 const User = require("../models/User");
 const { body, validationResult } = require("express-validator");
+const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
+
+const JWT_SECRET = "Awrejisagoodb$oy";
 
 // Create a User using: POST "/api/auth/createuser". No Login Required
 router.post(
@@ -29,16 +33,29 @@ router.post(
           .json({ error: "Sorry, A user with this email already exists." });
       }
 
+      const salt = await bcrypt.genSalt(10);
+      const hash = await bcrypt.hash(req.body.password, salt);
+
+      // Create a new user
       user = await User.create({
         name: req.body.name,
         email: req.body.email,
-        password: req.body.password,
+        password: hash,
       });
 
-      res.json(user);
+      const data = {
+        user: {
+          id: user.id,
+        },
+      };
+
+      const authToken = jwt.sign(data, JWT_SECRET);
+      console.log(authToken);
+
+      res.json({authToken});
     } catch (error) {
       console.error(error.message);
-      res.status(500).send("Some thing went wrong!")
+      res.status(500).send("Some thing went wrong!");
     }
   }
 );
