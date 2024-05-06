@@ -7,7 +7,7 @@ const jwt = require("jsonwebtoken");
 
 const JWT_SECRET = "Awrejisagoodb$oy";
 
-// Create a User using: POST "/api/auth/createuser". No Login Required
+// Route 1: Create a User using: POST "/api/auth/createuser". No Login Required
 router.post(
   "/createuser",
   [
@@ -34,28 +34,75 @@ router.post(
       }
 
       const salt = await bcrypt.genSalt(10);
-      const hash = await bcrypt.hash(req.body.password, salt);
+      const securePass = await bcrypt.hash(req.body.password, salt);
 
       // Create a new user
       user = await User.create({
         name: req.body.name,
         email: req.body.email,
-        password: hash,
+        password: securePass,
       });
 
-      const data = {
+      const payload = {
         user: {
           id: user.id,
         },
       };
 
-      const authToken = jwt.sign(data, JWT_SECRET);
-      console.log(authToken);
-
-      res.json({authToken});
+      const authToken = jwt.sign(payload, JWT_SECRET);
+      res.json({ authToken });
     } catch (error) {
       console.error(error.message);
-      res.status(500).send("Some thing went wrong!");
+      res.status(500).send("Internal Server Error");
+    }
+  }
+);
+
+// Route 2: Authenticate a User using: POST "/api/auth/login". No Login Required
+router.post(
+  "/login",
+  [
+    body("email", "Enter a vaild email").isEmail(),
+    body("password", "Password must be atleast 8 characters").isLength({
+      min: 8,
+    }),
+  ],
+  async (req, res) => {
+    // Finds the validation errors in this request and returns a bad request and the error
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
+    try {
+      const { email, password } = req.body;
+      let user = await User.findOne({ email });
+
+      if (!user) {
+        return res
+          .status(400)
+          .json({ error: "Please try to login with correct credentials" });
+      }
+
+      const passwordCompare = await bcrypt.compare(password, user.password);
+
+      if (!passwordCompare) {
+        return res
+          .status(400)
+          .json({ error: "Please try to login with correct credentials" });
+      }
+
+      const payload = {
+        user: {
+          id: user.id,
+        },
+      };
+
+      const authToken = jwt.sign(payload, JWT_SECRET);
+      res.json({ authToken });
+    } catch (error) {
+      console.error(error.message);
+      res.status(500).send("Internal Server Error");
     }
   }
 );
