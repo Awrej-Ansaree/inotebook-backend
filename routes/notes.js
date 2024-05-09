@@ -49,7 +49,7 @@ router.post(
   }
 );
 
-// Route 3: Update an existing note of the user using: POST "/api/notes/updatenote". Login Required
+// Route 3: Update an existing note of the user using: PUT "/api/notes/updatenote". Login Required
 router.put(
   "/updatenote/:id",
   [
@@ -80,17 +80,18 @@ router.put(
         newNote.tag = tag;
       }
 
+      // Find the note to be updated
       let note = await Notes.findById(req.params.id);
-      // Checking whether the note exists or not
       if (!note) {
         return res.status(404).send("Not Found");
       }
-      // Checking whether the note belongs to the Logined In user or not
+
+      // Check whether the note belongs to the Logined In user or not
       if (note.user.toString() !== req.user.id) {
         return res.status(401).send("Access Denied");
       }
 
-      // Updating the note of the Logined In user
+      // Updating the note
       note = await Notes.findByIdAndUpdate(
         req.params.id,
         { $set: newNote },
@@ -103,5 +104,28 @@ router.put(
     }
   }
 );
+
+// Route 4: Deleting an existing note of the user using: DELETE "/api/notes/deletenote". Login Required
+router.delete("/deletenote/:id", fetchuser, async (req, res) => {
+  try {
+    // Find the note to be deleted
+    let note = await Notes.findById(req.params.id);
+    if (!note) {
+      return res.status(404).send("Not Found");
+    }
+
+    // Check whether the note belongs to the Logined In user or not
+    if (note.user.toString() !== req.user.id) {
+      return res.status(401).send("Access Denied");
+    }
+
+    // Delete the note if it belongs to the user
+    note = await Notes.findByIdAndDelete(req.params.id);
+    res.json({ Success: "Your note has been deleted successfully", note });
+  } catch (error) {
+    console.error(error.message);
+    res.status(500).send("Internal Server Error");
+  }
+});
 
 module.exports = router;
